@@ -9,6 +9,7 @@ import kotlin.math.PI
 import kotlin.math.sin
 import kotlin.random.Random
 
+// Represents a normal star
 data class Star(
     val x: Float,
     val y: Float,
@@ -17,6 +18,7 @@ data class Star(
     val twinkleOffset: Float
 )
 
+// Represents a shooting star
 data class ShootingStar(
     var x: Float,
     var y: Float,
@@ -61,40 +63,35 @@ fun rememberStarFieldState(
 }
 
 fun StarFieldState.update(deltaTime: Float) {
-    // Update twinkle
+    // Twinkle phase update
     twinklePhase += deltaTime * 2f
 
-    // Shooting star logic
+    // Shooting star spawn
     shootingStarTimer -= (deltaTime * 1000).toLong()
     if (shootingStar == null && shootingStarTimer <= 0) {
-        // Spawn shooting star
         val startX = Random.nextFloat() * 800f
         val startY = Random.nextFloat() * 200f
-        val dx = 1f
-        val dy = 0.4f
         shootingStar = ShootingStar(
             x = startX,
             y = startY,
-            dx = dx,
-            dy = dy,
+            dx = 1f,
+            dy = 0.4f,
             length = 80f,
             speed = Random.nextFloat() * 400f + 300f
         )
-        shootingStarTimer = Random.nextLong(3000, 7000) // 3-7 sec between shots
+        shootingStarTimer = Random.nextLong(3000, 7000) // 3–7 sec
     }
 
-    shootingStar?.let { star ->
-        star.x += star.dx * star.speed * deltaTime
-        star.y += star.dy * star.speed * deltaTime
-
-        if (star.x > 1000f || star.y > 1000f) {
-            shootingStar = null
-        }
+    // Update shooting star position
+    shootingStar?.let { s ->
+        s.x += s.dx * s.speed * deltaTime
+        s.y += s.dy * s.speed * deltaTime
+        if (s.x > 1000f || s.y > 1000f) shootingStar = null
     }
 }
 
 fun DrawScope.drawStarField(state: StarFieldState) {
-    // Draw stars
+    // Draw normal stars
     state.stars.forEach { star ->
         val alpha = 0.5f + 0.5f * sin(state.twinklePhase * star.twinkleSpeed + star.twinkleOffset)
         drawCircle(
@@ -103,8 +100,7 @@ fun DrawScope.drawStarField(state: StarFieldState) {
             center = Offset(star.x, star.y)
         )
     }
-
-    // Draw shooting star
+    // Draw shooting star if active
     state.shootingStar?.let { s ->
         drawLine(
             color = Color.White,

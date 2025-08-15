@@ -12,7 +12,6 @@ fun LoginScreen(onLoginSuccess: () -> Unit) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
 
-    StarryBackground {
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -42,5 +41,5 @@ fun LoginScreen(onLoginSuccess: () -> Unit) {
                 Text("Log In")
             }
         }
-    }
+
 }

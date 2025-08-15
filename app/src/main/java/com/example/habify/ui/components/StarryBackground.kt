@@ -1,26 +1,29 @@
 package com.example.habify.ui.components
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
-import androidx.compose.ui.Modifier
-
 import androidx.compose.runtime.*
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 
 @Composable
 fun StarryBackground(content: @Composable () -> Unit) {
-    val state = rememberStarFieldState()
-    val frameTime = remember { mutableStateOf(System.nanoTime()) }
+    val state = LocalStarField.current
+    var lastTime by remember { mutableStateOf(System.nanoTime()) }
 
-    androidx.compose.foundation.Canvas(modifier = Modifier.fillMaxSize()) {
-        val now = System.nanoTime()
-        val deltaTime = (now - frameTime.value) / 1_000_000_000f
-        frameTime.value = now
+    Box(modifier = Modifier.fillMaxSize()) {
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val now = System.nanoTime()
+            val deltaTime = (now - lastTime) / 1_000_000_000f
+            lastTime = now
 
-        state.update(deltaTime)
-        drawStarField(state)
+            // <-- This line ensures the whole screen is dark under your UI
+            drawRect(Color.Black)
+
+            state.update(deltaTime)
+            drawStarField(state)
+        }
+        content()
     }
-
-    content()
 }

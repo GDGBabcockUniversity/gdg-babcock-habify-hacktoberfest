@@ -7,7 +7,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.habify.ui.components.StarryBackground
 
 @Composable
 fun SignUpScreen(onSignUpSuccess: () -> Unit, onLoginClick: () -> Unit) {
@@ -16,7 +15,6 @@ fun SignUpScreen(onSignUpSuccess: () -> Unit, onLoginClick: () -> Unit) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
 
-    StarryBackground {
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -66,4 +64,4 @@ fun SignUpScreen(onSignUpSuccess: () -> Unit, onLoginClick: () -> Unit) {
             }
         }
     }
-}
+

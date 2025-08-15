@@ -14,11 +14,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.habify.R
-import com.example.habify.ui.components.StarryBackground
 
 @Composable
 fun WelcomeScreen(onGetStarted: () -> Unit) {
-    StarryBackground {
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -71,5 +69,5 @@ fun WelcomeScreen(onGetStarted: () -> Unit) {
 
             Spacer(modifier = Modifier.height(24.dp))
         }
-    }
+
 }
