@@ -1,5 +1,7 @@
+// MainNavHost.kt
 package com.example.habify.navigation
 
+//import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -16,11 +18,13 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import com.example.habify.ui.components.StarryBackground
 import com.example.habify.ui.screens.*
 
 @Composable
-fun MainNavHost() {
+fun MainNavHost(
+    startDestination: String = "home",
+    onLogout: () -> Unit = {}
+) {
     val navController = rememberNavController()
     val items = listOf(
         BottomNavItem("home", "Home", Icons.Default.Home),
@@ -31,9 +35,10 @@ fun MainNavHost() {
     )
 
     Scaffold(
+        containerColor = Color.Transparent,
         bottomBar = {
             NavigationBar(
-                containerColor = Color.Black,
+                containerColor = Color.Transparent,
                 contentColor = Color.White
             ) {
                 val navBackStackEntry by navController.currentBackStackEntryAsState()
@@ -41,32 +46,76 @@ fun MainNavHost() {
 
                 items.forEach { item ->
                     NavigationBarItem(
-                        icon = { Icon(item.icon, contentDescription = item.label, tint = Color.White) },
-                        label = { Text(item.label, color = Color.White) },
+                        icon = {
+                            Icon(
+                                item.icon,
+                                contentDescription = item.label,
+                                tint = if (currentRoute == item.route) Color(0xFF00C853) else Color.White
+                            )
+                        },
+                        label = {
+                            Text(
+                                item.label,
+                                color = if (currentRoute == item.route) Color(0xFF00C853) else Color.White
+                            )
+                        },
                         selected = currentRoute == item.route,
                         onClick = {
-                            navController.navigate(item.route) {
-                                popUpTo(navController.graph.startDestinationId) { saveState = true }
-                                launchSingleTop = true
-                                restoreState = true
+                            if (currentRoute != item.route) {
+                                navController.navigate(item.route) {
+                                    popUpTo(navController.graph.startDestinationId) {
+                                        saveState = true
+                                    }
+                                    launchSingleTop = true
+                                    restoreState = true
+                                }
                             }
-                        }
+                        },
+                        colors = NavigationBarItemDefaults.colors(
+                            selectedIconColor = Color(0xFF00C853),
+                            selectedTextColor = Color(0xFF00C853),
+                            unselectedIconColor = Color.White,
+                            unselectedTextColor = Color.White,
+                            indicatorColor = Color.Transparent
+                        )
                     )
                 }
             }
         }
     ) { innerPadding ->
-        StarryBackground {
-            NavHost(
-                navController = navController,
-                startDestination = "home",
-                modifier = Modifier.padding(innerPadding)
-            ) {
-                composable("home") { HomeScreen() }
-                composable("friends") { FriendsScreen() }
-                composable("addHabit") { AddHabitScreen() }
-                composable("profile") { ProfileScreen() }
-                composable("settings") { SettingsScreen() }
+        NavHost(
+            navController = navController,
+            startDestination = startDestination,
+            modifier = Modifier.padding(innerPadding)
+        ) {
+            composable("home") { HomeScreen() }
+            composable("friends") { FriendsScreen() }
+            composable("addHabit") {
+                AddHabitScreen(
+                    onHabitSaved = {
+                        // After successfully saving a habit, navigate back to home
+                        navController.navigate("home") {
+                            popUpTo("addHabit") { inclusive = true }
+                        }
+                    },
+                    onNavigateBack = {
+                        // Handle back navigation when user taps close button
+                        navController.popBackStack()
+                    }
+                )
+            }
+            composable("profile") { ProfileScreen {  } }
+            composable("settings") {
+                SettingsScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onLogout = onLogout,
+                    // Add other callbacks as needed
+                    onEditProfile = { /* TODO: Navigate to edit profile */ },
+                    onChangePassword = { /* TODO: Navigate to change password */ },
+                    onDeleteAccount = { /* TODO: Handle account deletion */ },
+                    onHelpCenter = { /* TODO: Navigate to help center */ },
+                    onContactUs = { /* TODO: Navigate to contact us */ }
+                )
             }
         }
     }
