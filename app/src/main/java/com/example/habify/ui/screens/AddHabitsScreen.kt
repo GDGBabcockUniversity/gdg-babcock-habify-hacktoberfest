@@ -64,6 +64,8 @@ fun AddHabitScreen(
     var selectedCategory by remember { mutableStateOf(getAvailableCategories().first()) }
     var selectedFrequency by remember { mutableStateOf(HabitFrequency.DAILY) }
     var reminderEnabled by remember { mutableStateOf(false) }
+    var selectedTime by remember { mutableStateOf("9:00 AM") }
+    var showTimePicker by remember { mutableStateOf(false) }
     var isLoading by remember { mutableStateOf(false) }
 
     val snackbarHostState = remember { SnackbarHostState() }
@@ -259,6 +261,64 @@ fun AddHabitScreen(
                 }
             }
 
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // Reminder Time Selection
+            Text(
+                text = "Reminder Time",
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Medium,
+                color = Color.White,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable {
+                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        showTimePicker = true
+                    },
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFF1A1A1A))
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Default.AccessTime,
+                            contentDescription = "Time",
+                            tint = Color(0xFF00C853),
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column {
+                            Text(
+                                text = "Set Time",
+                                fontSize = 14.sp,
+                                color = Color.Gray
+                            )
+                            Text(
+                                text = selectedTime,
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = Color.White
+                            )
+                        }
+                    }
+                    Icon(
+                        imageVector = Icons.Default.ChevronRight,
+                        contentDescription = "Select time",
+                        tint = Color.Gray
+                    )
+                }
+            }
+
             Spacer(modifier = Modifier.height(32.dp))
 
             // Save Button
@@ -274,6 +334,7 @@ fun AddHabitScreen(
                             category = selectedCategory,
                             frequency = selectedFrequency,
                             reminderEnabled = reminderEnabled,
+                            reminderTime = selectedTime,
                             onSuccess = {
                                 isLoading = false
                                 onHabitSaved()
@@ -329,6 +390,18 @@ fun AddHabitScreen(
                 }
             }
         }
+    }
+
+    // Time Picker Dialog
+    if (showTimePicker) {
+        TimePickerDialog(
+            selectedTime = selectedTime,
+            onTimeSelected = { time ->
+                selectedTime = time
+                showTimePicker = false
+            },
+            onDismiss = { showTimePicker = false }
+        )
     }
 }
 
@@ -424,6 +497,91 @@ fun FrequencySelectionRow(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun TimePickerDialog(
+    selectedTime: String,
+    onTimeSelected: (String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val timePickerState = rememberTimePickerState(
+        initialHour = selectedTime.split(":")[0].trim().toIntOrNull() ?: 9,
+        initialMinute = selectedTime.split(":")[1].trim().split(" ")[0].toIntOrNull() ?: 0,
+        is24Hour = false
+    )
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = Color(0xFF1A1A1A)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = "Select Time",
+                fontSize = 20.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = Color.White,
+                modifier = Modifier.padding(bottom = 16.dp)
+            )
+
+            TimePicker(
+                state = timePickerState,
+                colors = TimePickerDefaults.colors(
+                    clockDialColor = Color(0xFF2A2A2A),
+                    selectorColor = Color(0xFF00C853),
+                    containerColor = Color(0xFF1A1A1A),
+                    periodSelectorBorderColor = Color(0xFF00C853),
+                    clockDialSelectedContentColor = Color.White,
+                    clockDialUnselectedContentColor = Color.Gray,
+                    periodSelectorSelectedContainerColor = Color(0xFF00C853),
+                    periodSelectorUnselectedContainerColor = Color(0xFF2A2A2A),
+                    periodSelectorSelectedContentColor = Color.White,
+                    periodSelectorUnselectedContentColor = Color.Gray,
+                    timeSelectorSelectedContainerColor = Color(0xFF00C853),
+                    timeSelectorUnselectedContainerColor = Color(0xFF2A2A2A),
+                    timeSelectorSelectedContentColor = Color.White,
+                    timeSelectorUnselectedContentColor = Color.Gray
+                )
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End
+            ) {
+                TextButton(onClick = onDismiss) {
+                    Text("Cancel", color = Color.Gray)
+                }
+                Spacer(modifier = Modifier.width(8.dp))
+                Button(
+                    onClick = {
+                        val hour = timePickerState.hour
+                        val minute = timePickerState.minute
+                        val amPm = if (hour < 12) "AM" else "PM"
+                        val displayHour = when {
+                            hour == 0 -> 12
+                            hour > 12 -> hour - 12
+                            else -> hour
+                        }
+                        val formattedTime = String.format("%d:%02d %s", displayHour, minute, amPm)
+                        onTimeSelected(formattedTime)
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF00C853)
+                    )
+                ) {
+                    Text("OK", color = Color.White)
+                }
+            }
+        }
+    }
+}
+
 @Composable
 private fun textFieldColors() = OutlinedTextFieldDefaults.colors(
     focusedTextColor = Color.White,
@@ -471,6 +629,7 @@ fun saveHabit(
     category: HabitCategory,
     frequency: HabitFrequency,
     reminderEnabled: Boolean,
+    reminderTime: String,
     onSuccess: () -> Unit,
     onError: (String) -> Unit
 ) {
@@ -496,7 +655,7 @@ fun saveHabit(
         "isActive" to true,
         "streak" to 0,
         "totalCompletions" to 0,
-        "targetTime" to "9:00 AM" // Default time, can be customized later
+        "targetTime" to reminderTime
     )
 
     db.collection("habits")
