@@ -2,6 +2,7 @@ package com.example.habify.ui.screens
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -10,12 +11,16 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.outlined.Circle
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.Timestamp
@@ -33,7 +38,11 @@ data class Habit(
     val streak: Int = 0,
     val totalCompletions: Int = 0,
     val targetTime: String = "9:00 AM",
-    val isCompletedToday: Boolean = false
+    val isCompletedToday: Boolean = false,
+    val categoryId: String = "",
+    val categoryName: String = "",
+    val iconId: String = "",
+    val iconName: String = ""
 )
 
 @Composable
@@ -44,6 +53,7 @@ fun HomeScreen(
     var habits by remember { mutableStateOf<List<Habit>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
     var completionsToday by remember { mutableStateOf<Set<String>>(emptySet()) }
+    var selectedCategory by rememberSaveable { mutableStateOf("all") }
 
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
@@ -80,7 +90,11 @@ fun HomeScreen(
                             isActive = doc.getBoolean("isActive") ?: true,
                             streak = doc.getLong("streak")?.toInt() ?: 0,
                             totalCompletions = doc.getLong("totalCompletions")?.toInt() ?: 0,
-                            targetTime = doc.getString("targetTime") ?: "9:00 AM"
+                            targetTime = doc.getString("targetTime") ?: "9:00 AM",
+                            categoryId = doc.getString("categoryId") ?: "other",
+                            categoryName = doc.getString("categoryName") ?: "Other",
+                            iconId = doc.getString("iconId") ?: "work",
+                            iconName = doc.getString("iconName") ?: "Work"
                         )
                     } catch (e: Exception) {
                         null
@@ -118,6 +132,26 @@ fun HomeScreen(
         }
     }
 
+    // Filter habits based on selected category
+    val filteredHabits = remember(habits, selectedCategory) {
+        if (selectedCategory == "all") {
+            habits
+        } else {
+            habits.filter { it.categoryId == selectedCategory }
+        }
+    }
+
+    // Get available categories from current habits with counts
+    val availableCategories = remember(habits) {
+        val habitCategories = habits.groupBy { it.categoryId }
+        val allCount = habits.size
+        val categoryList = habitCategories.map { (categoryId, habitList) ->
+            val categoryName = habitList.firstOrNull()?.categoryName ?: "Unknown"
+            categoryId to "$categoryName (${habitList.size})"
+        }.toList()
+        listOf("all" to "All Categories ($allCount)") + categoryList
+    }
+
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
@@ -144,6 +178,12 @@ fun HomeScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(horizontal = 16.dp)
+                    .animateContentSize(
+                        animationSpec = spring(
+                            dampingRatio = Spring.DampingRatioMediumBouncy,
+                            stiffness = Spring.StiffnessMedium
+                        )
+                    )
             ) {
                 // Header
                 item {
@@ -165,18 +205,34 @@ fun HomeScreen(
                     }
                 }
 
+                // Category Filter Chips
+                if (habits.isNotEmpty()) {
+                    item {
+                        CategoryFilterSection(
+                            categories = availableCategories,
+                            selectedCategory = selectedCategory,
+                            onCategorySelected = { selectedCategory = it }
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                    }
+                }
+
                 // Progress Summary
                 item {
                     ProgressSummaryCard(
-                        habits = habits,
+                        habits = filteredHabits,
                         onStatsClick = onNavigateToStats
                     )
                     Spacer(modifier = Modifier.height(24.dp))
                 }
 
-                // Habits by time period
-                if (habits.isNotEmpty()) {
-                    val groupedHabits = groupHabitsByTimePeriod(habits)
+                // Habits by time period or category
+                if (filteredHabits.isNotEmpty()) {
+                    val groupedHabits = if (selectedCategory == "all") {
+                        groupHabitsByTimePeriod(filteredHabits)
+                    } else {
+                        mapOf("${availableCategories.find { it.first == selectedCategory }?.second ?: "Category"} Habits" to filteredHabits)
+                    }
 
                     groupedHabits.forEach { (period, periodHabits) ->
                         if (periodHabits.isNotEmpty()) {
@@ -241,6 +297,62 @@ fun HomeScreen(
                 item {
                     Spacer(modifier = Modifier.height(80.dp))
                 }
+            }
+        }
+    }
+}
+
+@Composable
+fun CategoryFilterSection(
+    categories: List<Pair<String, String>>,
+    selectedCategory: String,
+    onCategorySelected: (String) -> Unit
+) {
+    Column {
+        Text(
+            text = "Categories",
+            fontSize = 18.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = Color.White,
+            modifier = Modifier.padding(bottom = 12.dp)
+        )
+
+        LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            contentPadding = PaddingValues(horizontal = 0.dp)
+        ) {
+            items(categories) { (categoryId, categoryName) ->
+                FilterChip(
+                    onClick = { onCategorySelected(categoryId) },
+                    label = {
+                        Text(
+                            text = categoryName,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                    },
+                    selected = selectedCategory == categoryId,
+                    modifier = Modifier.animateContentSize(
+                        animationSpec = spring(
+                            dampingRatio = Spring.DampingRatioMediumBouncy,
+                            stiffness = Spring.StiffnessLow
+                        )
+                    ),
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = Color(0xFF00C853).copy(alpha = 0.2f),
+                        selectedLabelColor = Color(0xFF00C853),
+                        containerColor = Color(0xFF1A1A1A),
+                        labelColor = Color.White
+                    ),
+                    border = FilterChipDefaults.filterChipBorder(
+                        enabled = true,
+                        selected = selectedCategory == categoryId,
+                        borderColor = Color.Gray.copy(alpha = 0.3f),
+                        selectedBorderColor = Color(0xFF00C853),
+                        borderWidth = 1.dp,
+                        selectedBorderWidth = 2.dp
+                    )
+                )
             }
         }
     }
@@ -374,15 +486,36 @@ fun HabitCard(
                 Spacer(modifier = Modifier.width(12.dp))
 
                 Column {
-                    Text(
-                        text = habit.name,
-                        color = if (habit.isCompletedToday)
-                            Color.White.copy(alpha = 0.7f)
-                        else
-                            Color.White,
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Medium
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(
+                            text = habit.name,
+                            color = if (habit.isCompletedToday)
+                                Color.White.copy(alpha = 0.7f)
+                            else
+                                Color.White,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                        if (habit.categoryName.isNotEmpty()) {
+                            Card(
+                                colors = CardDefaults.cardColors(
+                                    containerColor = getCategoryColor(habit.categoryId).copy(alpha = 0.3f)
+                                ),
+                                modifier = Modifier.padding(0.dp)
+                            ) {
+                                Text(
+                                    text = habit.categoryName,
+                                    color = getCategoryColor(habit.categoryId),
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                )
+                            }
+                        }
+                    }
                     Text(
                         text = habit.targetTime,
                         color = Color.Gray,
@@ -451,6 +584,24 @@ fun groupHabitsByTimePeriod(habits: List<Habit>): Map<String, List<Habit>> {
             hour < 17 -> "Afternoon"
             else -> "Evening"
         }
+    }
+}
+
+fun groupHabitsByCategory(habits: List<Habit>): Map<String, List<Habit>> {
+    return habits.groupBy { habit ->
+        habit.categoryName.ifEmpty { "Other" }
+    }
+}
+
+fun getCategoryColor(categoryId: String): Color {
+    return when (categoryId) {
+        "health" -> Color(0xFF4CAF50)
+        "fitness" -> Color(0xFF2196F3)
+        "productivity" -> Color(0xFF9C27B0)
+        "social" -> Color(0xFFFF5722)
+        "finance" -> Color(0xFFFFEB3B)
+        "other" -> Color(0xFF795548)
+        else -> Color(0xFF00C853)
     }
 }
 
