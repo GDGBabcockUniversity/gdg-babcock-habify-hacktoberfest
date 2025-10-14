@@ -11,6 +11,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material.icons.filled.*
@@ -453,21 +454,48 @@ fun CategorySelectionRow(
     selectedCategory: HabitCategory,
     onCategorySelected: (HabitCategory) -> Unit
 ) {
-    Row(
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    LazyVerticalGrid(
+        columns = GridCells.Fixed(2),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = Modifier.height(120.dp)
     ) {
-        categories.forEach { category ->
-            FilterChip(
-                onClick = { onCategorySelected(category) },
-                label = { Text(category.name) },
-                selected = selectedCategory.id == category.id,
-                colors = FilterChipDefaults.filterChipColors(
-                    selectedContainerColor = Color(0xFF00C853).copy(alpha = 0.2f),
-                    selectedLabelColor = Color(0xFF00C853),
-                    containerColor = Color(0xFF1A1A1A),
-                    labelColor = Color.White
-                )
-            )
+        items(categories) { category ->
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(50.dp)
+                    .clickable { onCategorySelected(category) },
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = if (selectedCategory.id == category.id)
+                        category.color.copy(alpha = 0.2f)
+                    else
+                        Color(0xFF1A1A1A)
+                ),
+                border = if (selectedCategory.id == category.id)
+                    androidx.compose.foundation.BorderStroke(2.dp, category.color)
+                else
+                    androidx.compose.foundation.BorderStroke(1.dp, Color.Gray.copy(alpha = 0.3f))
+            ) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = category.name,
+                        color = if (selectedCategory.id == category.id)
+                            category.color
+                        else
+                            Color.White,
+                        fontSize = 14.sp,
+                        fontWeight = if (selectedCategory.id == category.id)
+                            FontWeight.SemiBold
+                        else
+                            FontWeight.Medium
+                    )
+                }
+            }
         }
     }
 }
